@@ -8,9 +8,10 @@
 ### Output: Hand joint angles alpha(23), hand shape beta(10),
 ###         Global rotation(3), planar translation(2), scaling(1)
 ###############################################################################
+import argparse
 
 import torch
-import numpy as np 
+import numpy as np
 import torch.nn as nn
 
 import utils_mobilenet_v3
@@ -27,7 +28,7 @@ class Regressor(LinearModel):
         mean = np.zeros(self.num_param, dtype=np.float32)
         mean_param = np.tile(mean, max_batch_size).reshape((max_batch_size, -1)) # [bs, num_param]
         self.register_buffer('mean_param', torch.from_numpy(mean_param).float())
-    
+
 
     def forward(self, inputs):
         # param:
@@ -60,15 +61,15 @@ class HMR(nn.Module):
         # Load encoder 
         self.encoder = utils_mobilenet_v3.mobilenetv3_small() # MobileNetV3
         num_features = 576
-        
+
         # Load iterative regressor
         self.regressor = Regressor(
-            fc_layers  =[num_features+self.num_param, 
-                         int(num_features/2), 
+            fc_layers  =[num_features+self.num_param,
+                         int(num_features/2),
                          int(num_features/2),
                          self.num_param],
-            use_dropout=[True, True, False], 
-            drop_prob  =[0.5, 0.5, 0], 
+            use_dropout=[True, True, False],
+            drop_prob  =[0.5, 0.5, 0],
             use_ac_func=[True, True, False],
             num_param  =self.num_param,
             num_iters  =3,
@@ -81,14 +82,15 @@ class HMR(nn.Module):
     def compute_results(self, param):
         # From the input parameters [bs, num_param] 
         # Compute the resulting 2D marker location
-        scale = param[:, 0].contiguous()    # [bs]    Scaling 
+        scale = param[:, 0].contiguous()    # [bs]    Scaling
         trans = param[:, 1:3].contiguous()  # [bs,2]  Translation in x and y only
         rvec  = param[:, 3:6].contiguous()  # [bs,3]  Global rotation vector
         beta  = param[:, 6:16].contiguous() # [bs,10] Shape parameters
         ang   = param[:, 16:].contiguous()  # [bs,23] Angle parameters
 
-        pose = self.mano.convert_ang_to_pose(ang)
-        vert, joint = self.mano(beta, pose, rvec)
+        # 将angle转化为MANO的pose  23->45(15*3)
+        pose = self.mano.convert_ang_to_pose(ang) # [bs, 15, 3]
+        vert, joint = self.mano(beta, pose, rvec) # [bs, 778, 3] [bs, 21, 3]
 
         # Convert from m to mm
         vert *= 1000.0
@@ -98,11 +100,11 @@ class HMR(nn.Module):
         # Use half the distance between wrist and middle finger MCP as palm center (root joint)
         if self.stb_dataset:
             joint[:,0,:] = (joint[:,0,:] + joint[:,9,:])/2.0
-        
+
         # Project 3D joints to 2D image using weak perspective projection 
         # only consider x and y axis so does not rely on camera intrinsic
         # [bs,21,2] * [bs,1,1] + [bs,1,2]
-        keypt = joint[:,:,:2] * scale.unsqueeze(1).unsqueeze(2) + trans.unsqueeze(1)
+        keypt = joint[:,:,:2] * scale.unsqueeze(1).unsqueeze(2) + trans.unsqueeze(1) # [bs, 21, 2]
 
         # if self.stb_dataset: # For publication to generate images for STB dataset
         # if not self.stb_dataset:
@@ -112,6 +114,7 @@ class HMR(nn.Module):
         return keypt, joint, vert, ang # [bs,21,2], [bs,21,3], [bs,778,3], [bs,23]
 
 
+    # evaluation 决定了HMR模型返回参数的数量   训练时为false 返回params为3次迭代的值列表  验证时只返回最后一次的值
     def forward(self, inputs, evaluation=True, get_feature=False):
         features = self.encoder(inputs)
         params   = self.regressor(features)
@@ -137,6 +140,13 @@ class HMR(nn.Module):
 ### Simple example to test the program                                      ###
 ###############################################################################
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Demo')
+    parser.add_argument('--cuda', '-c', action='store_true', help='Use GPU')
+    parser.add_argument('--data', '-d', default='freihand', help='stb / freihand')
+    parser.add_argument('--mode', '-m', default='image', help='image / video / camera')
+    arg = parser.parse_args()
+
     def display_num_param(net):
         nb_param = 0
         for param in net.parameters():
@@ -144,7 +154,7 @@ if __name__ == '__main__':
         print('There are %d (%.2f million) parameters in this neural network' %
             (nb_param, nb_param/1e6))
 
-    model = HMR() 
+    model = HMR(arg)
     display_num_param(model) # 3.82 million for MobileNetV3 Small
     model.eval()
 

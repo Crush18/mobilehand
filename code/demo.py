@@ -25,7 +25,8 @@ device = torch.device('cuda' if torch.cuda.is_available() and arg.cuda else 'cpu
 
 # Load neural network
 model = HMR(arg)
-model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
+# model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
+model.load_state_dict(torch.load("../checkpoint/model_100.pth"))
 model.to(device)
 model.eval()
 
@@ -34,7 +35,8 @@ disp = Display(arg, model, device)
 
 if arg.mode=='image':
     # Load image from file
-    file = 'stb_SK_color_0.png' if arg.data=='stb' else 'freihand_00000000.jpg'
+    # file = 'stb_SK_color_0.png' if arg.data=='stb' else 'freihand_00000000.jpg'
+    file = 'stb_SK_color_0.png' if arg.data=='stb' else '00000045.jpg'
     img = cv2.imread('../data/' + file)
 
     # Special consideration for STB dataset
@@ -50,7 +52,9 @@ if arg.mode=='image':
     img = torch.as_tensor(img, dtype=torch.float32) # Convert to torch tensor
     img = img.permute(2,0,1) / 255.0                # Shift RGB channel infront [3,224,224] and scale to [0,1]
     # Input image to model
-    res = model(img.to(device).unsqueeze(0))
+    res = model(img.to(device).unsqueeze(0))  # 转化到[1,3,224,224]再输入模型
+    keypt, joint, vert, ang, params = res
+    print(joint)  # 查看模型计算出的3djoint值
     # Display result
     disp.update(img, res)
     cv2.waitKey(60)
