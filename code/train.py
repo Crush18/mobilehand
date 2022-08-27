@@ -20,10 +20,10 @@ print(device)
 
 # dataloader 获取每个样本的rgb图像和标注-3djoint和2dkeypoint
 # 数据集存放在项目文件的同级目录
-train_root_dir = "E:\DataSet\FreiHAND_pub_v2"
-test_root_dir = "E:\DataSet\FreiHAND_pub_v2_eval"
-# train_root_dir = "../../FreiHAND_pub_v2"
-# test_root_dir = "../../FreiHAND_pub_v2_eval"
+# train_root_dir = "E:\DataSet\FreiHAND_pub_v2"
+# test_root_dir = "E:\DataSet\FreiHAND_pub_v2_eval"
+train_root_dir = "../../FreiHAND_pub_v2"
+test_root_dir = "../../FreiHAND_pub_v2_eval"
 
 batch_size = 20   # HMR模型的最大batch是80
 num_workers = 0
