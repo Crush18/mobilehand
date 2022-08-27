@@ -115,16 +115,17 @@ def projectPoints(xyz, K):
 
 class FreiHandSet(Dataset):
 
-    def __init__(self, root_dir, split):
+    def __init__(self, root_dir, split, version):
         # root_dir 表示数据集的根目录 取值 FreiHAND_pub_v2 or FreiHAND_pub_v2_eval
         # split表示训练集还是测试集  取值 training or evaluation
         self.root_dir = root_dir
         self.split = split
+        self.version = version
         # self.img_path = os.path.join(self.root_dir, split, "rgb")
         self.data_anno = load_db_annotation(self.root_dir, split)
 
     def __getitem__(self, idx):
-        img = read_img(idx, self.root_dir, self.split)
+        img = read_img(idx, self.root_dir, self.split, self.version)
 
         K, mano, xyz = self.data_anno[idx]
         K, mano, xyz = [np.array(x) for x in [K, mano, xyz]]

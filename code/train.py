@@ -29,9 +29,9 @@ batch_size = 20   # HMR模型的最大batch是80
 num_workers = 0
 
 # 准备数据集并加载数据
-train = FreiHandSet(train_root_dir, split="training")
+train = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
 trainloader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-test = FreiHandSet(test_root_dir, split="evaluation")
+test = FreiHandSet(test_root_dir, split="evaluation", version=sample_version.gs)
 testloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
 # 创建模型
@@ -117,13 +117,13 @@ while True:
         total_loss = 100 * loss_2d + 100 * loss_3d + 1000 * loss_reg
 
         # 计算3D PCK 和 AUC  要求joint的gt和pred在同一个数量级上   验证功能使用
-        for i in range(joint.shape[0]):
-            gt_joint_item = gt_joints[i]
-            pred_joint_item = joint[i]
-            evaluator.feed(gt_joint_item, pred_joint_item)
-            result = evaluator.get_measures(0, 50, 20)
-            _1, _2, _3, auc_3d, pck_curve_3d, _ = result
-            total_test_auc = total_test_auc + auc_3d
+        # for i in range(joint.shape[0]):
+        #     gt_joint_item = gt_joints[i]
+        #     pred_joint_item = joint[i]
+        #     evaluator.feed(gt_joint_item, pred_joint_item)
+        #     result = evaluator.get_measures(0, 50, 20)
+        #     _1, _2, _3, auc_3d, pck_curve_3d, _ = result
+        #     total_test_auc = total_test_auc + auc_3d
 
         # 优化器优化模型
         optimizer.zero_grad()

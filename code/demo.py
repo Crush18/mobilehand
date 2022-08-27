@@ -26,7 +26,7 @@ device = torch.device('cuda' if torch.cuda.is_available() and arg.cuda else 'cpu
 # Load neural network
 model = HMR(arg)
 # model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
-model.load_state_dict(torch.load("../checkpoint/model_100.pth"))
+model.load_state_dict(torch.load("../checkpoint/model_101.pth"))
 model.to(device)
 model.eval()
 
