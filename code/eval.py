@@ -24,13 +24,13 @@ batch_size = 80  # HMR模型的最大batch是80
 num_workers = 0
 
 test_root_dir = "E:\DataSet\FreiHAND_pub_v2"
-test = FreiHandSet(test_root_dir, split="training")
+test = FreiHandSet(test_root_dir, split="training", version=sample_version.gs)
 testloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
 # Load neural network
 model = HMR(arg)
 # model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
-model.load_state_dict(torch.load("../checkpoint/model_101.pth"))
+model.load_state_dict(torch.load("../checkpoint/model_253.pth"))
 model.to(device)
 
 # 损失函数

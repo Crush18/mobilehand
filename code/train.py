@@ -20,16 +20,21 @@ print(device)
 
 # dataloader 获取每个样本的rgb图像和标注-3djoint和2dkeypoint
 # 数据集存放在项目文件的同级目录
-# train_root_dir = "E:\DataSet\FreiHAND_pub_v2"
-# test_root_dir = "E:\DataSet\FreiHAND_pub_v2_eval"
-train_root_dir = "../../FreiHAND_pub_v2"
-test_root_dir = "../../FreiHAND_pub_v2_eval"
+train_root_dir = "E:\DataSet\FreiHAND_pub_v2"
+test_root_dir = "E:\DataSet\FreiHAND_pub_v2_eval"
+# train_root_dir = "../../FreiHAND_pub_v2"
+# test_root_dir = "../../FreiHAND_pub_v2_eval"
 
 batch_size = 20   # HMR模型的最大batch是80
 num_workers = 0
 
 # 准备数据集并加载数据
-train = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
+# 组合4种version的训练图片形成训练集
+train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+train_hom = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
+train_sample = FreiHandSet(train_root_dir, split="training", version=sample_version.sample)
+train_auto = FreiHandSet(train_root_dir, split="training", version=sample_version.auto)
+train = train_gs + train_hom + train_sample + train_auto
 trainloader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 test = FreiHandSet(test_root_dir, split="evaluation", version=sample_version.gs)
 testloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers)
@@ -132,7 +137,7 @@ while True:
         schedule.step()
 
         total_train_step = total_train_step + 1
-        if total_train_step % 100 == 0:
+        if total_train_step % 2 == 0:
             print("训练次数：{}, Loss:{}".format(total_train_step, total_loss))
             # log.write("训练次数：{}, Loss:{}\n".format(total_train_step, total_loss))
             # writer.add_scalar("train", total_loss, total_train_step)

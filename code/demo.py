@@ -25,8 +25,8 @@ device = torch.device('cuda' if torch.cuda.is_available() and arg.cuda else 'cpu
 
 # Load neural network
 model = HMR(arg)
-# model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
-model.load_state_dict(torch.load("../checkpoint/model_101.pth"))
+model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
+# model.load_state_dict(torch.load("../checkpoint/model_101.pth"))
 model.to(device)
 model.eval()
 
@@ -36,7 +36,7 @@ disp = Display(arg, model, device)
 if arg.mode=='image':
     # Load image from file
     # file = 'stb_SK_color_0.png' if arg.data=='stb' else 'freihand_00000000.jpg'
-    file = 'stb_SK_color_0.png' if arg.data=='stb' else '00000045.jpg'
+    file = 'stb_SK_color_0.png' if arg.data=='stb' else '00000016.jpg'
     img = cv2.imread('../data/' + file)
 
     # Special consideration for STB dataset

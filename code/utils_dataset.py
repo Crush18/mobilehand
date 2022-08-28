@@ -84,7 +84,8 @@ def read_img(idx, base_path, set_name, version=None):
                                 '%08d.jpg' % sample_version.map_id(idx, version))
     img = Image.open(img_rgb_path).convert('RGB')
     to_tensor = torchvision.transforms.ToTensor()
-    return to_tensor(img)
+    img = to_tensor(img)
+    return img
 
 
 def projectPoints(xyz, K):
@@ -148,8 +149,8 @@ class FreiHandSet(Dataset):
 if __name__ == '__main__':
     train_root_dir = "E:\DataSet\FreiHAND_pub_v2"
     test_root_dir = "E:\DataSet\FreiHAND_pub_v2_eval"
-    train = FreiHandSet(train_root_dir, split="training")
-    print(len(train))
+    # train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+    # print(len(train_gs))
     # img, joint, keypoint = train[0]
     # print(joint * 1000)
     # print(keypoint)
@@ -157,3 +158,14 @@ if __name__ == '__main__':
     # print(len(test))
     # img, joint, keypoint = test[0]
     # print(joint)
+
+    # 组合训练集4种version的dataset
+    train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+    train_hom = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
+    train_sample = FreiHandSet(train_root_dir, split="training", version=sample_version.sample)
+    train_auto = FreiHandSet(train_root_dir, split="training", version=sample_version.auto)
+    train = train_gs + train_hom + train_sample + train_auto
+    imga, jointa, kpa = train_auto[-1]
+    img, joint, kp = train[-1]
+    print(kp == kpa)
+
