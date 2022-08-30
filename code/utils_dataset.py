@@ -3,9 +3,10 @@ import os
 import time
 
 import numpy as np
+import torch
 import torchvision.transforms
 from PIL import Image
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 
 
 def json_load(p):
@@ -160,12 +161,35 @@ if __name__ == '__main__':
     # print(joint)
 
     # 组合训练集4种version的dataset
-    train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
-    train_hom = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
-    train_sample = FreiHandSet(train_root_dir, split="training", version=sample_version.sample)
-    train_auto = FreiHandSet(train_root_dir, split="training", version=sample_version.auto)
-    train = train_gs + train_hom + train_sample + train_auto
-    imga, jointa, kpa = train_auto[-1]
-    img, joint, kp = train[-1]
-    print(kp == kpa)
+    # train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+    # train_hom = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
+    # train_sample = FreiHandSet(train_root_dir, split="training", version=sample_version.sample)
+    # train_auto = FreiHandSet(train_root_dir, split="training", version=sample_version.auto)
+    # train = train_gs + train_hom + train_sample + train_auto
+    # imga, jointa, kpa = train_auto[-1]
+    # img, joint, kp = train[-1]
+    # print(kp == kpa)
+
+    # 测试数据集中单独标注和总体标注的区别   差距在5之内
+    # test = FreiHandSet(test_root_dir, split="evaluation", version=sample_version.gs)
+    # imgs, joint, kp = test[0]
+    # print(len(kp))
+    # print(kp)
+    # another_test0_path = os.path.join(test_root_dir, "evaluation", "anno", "00000000.json")
+    # another_test0 = json_load(another_test0_path)
+    # a_joint = another_test0['xyz']
+    # a_k = another_test0['K']
+    # a_kp = projectPoints(a_joint, a_k)
+    # print(a_kp)
+    # print(a_kp - kp)
+    # print((a_kp - kp) < 5)
+
+    # 在训练集gs中划分出训练集和验证集9:1
+    dataset = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+    train_size = int(0.9 * len(dataset))
+    eval_size = len(dataset) - train_size
+    traindata, evaldata = random_split(dataset, [train_size, eval_size])
+    print(len(traindata), " " , len(evaldata))
+
+
 

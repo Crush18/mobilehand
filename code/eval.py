@@ -23,14 +23,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 80  # HMR模型的最大batch是80
 num_workers = 0
 
-test_root_dir = "E:\DataSet\FreiHAND_pub_v2"
-test = FreiHandSet(test_root_dir, split="training", version=sample_version.gs)
+test_root_dir = "E:\DataSet\FreiHAND_pub_v2_eval"
+test = FreiHandSet(test_root_dir, split="evaluation", version=sample_version.gs)
 testloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
 # Load neural network
 model = HMR(arg)
 # model.load_state_dict(torch.load('../model/hmr_model_' + arg.data + '_auc.pth'))
-model.load_state_dict(torch.load("../checkpoint/model_253.pth"))
+model.load_state_dict(torch.load("../checkpoint/model_4version58.pth"))
 model.to(device)
 
 # 损失函数
@@ -81,7 +81,7 @@ with torch.no_grad():
             evaluator.feed(gt_joint_item, pred_joint_item)
             result = evaluator.get_measures(0, 50, 20)
             _1, _2, _3, auc_3d, pck_curve_3d, _ = result
-            print("step:{}, single test auc:{}".format(total_test_step, auc_3d))
+            # print("step:{}, single test auc:{}".format(total_test_step, auc_3d))
             batch_test_auc  = batch_test_auc + auc_3d
             total_test_auc = total_test_auc + auc_3d
         end_time = time.time()

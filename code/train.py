@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description='Demo')
 parser.add_argument('--cuda', '-c', action='store_true', help='Use GPU')
 parser.add_argument('--data', '-d', default='freihand', help='stb / freihand')
 parser.add_argument('--mode', '-m', default='image', help='image / video / camera')
+parser.add_argument('--resume', '-r', type=str, default='latest', help='None: no resume, latest: latest, model_x.pth')
 arg = parser.parse_args()
 
 # 定义训练设备  训练时默认使用GPU
@@ -30,13 +31,21 @@ num_workers = 0
 
 # 准备数据集并加载数据
 # 组合4种version的训练图片形成训练集
-train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
-train_hom = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
-train_sample = FreiHandSet(train_root_dir, split="training", version=sample_version.sample)
-train_auto = FreiHandSet(train_root_dir, split="training", version=sample_version.auto)
-train = train_gs + train_hom + train_sample + train_auto
+# train_gs = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+# train_hom = FreiHandSet(train_root_dir, split="training", version=sample_version.hom)
+# train_sample = FreiHandSet(train_root_dir, split="training", version=sample_version.sample)
+# train_auto = FreiHandSet(train_root_dir, split="training", version=sample_version.auto)
+# train = train_gs + train_hom + train_sample + train_auto
+
+# 在训练集gs中划分训练集和测试集
+dataset = FreiHandSet(train_root_dir, split="training", version=sample_version.gs)
+train_size = int(0.9 * len(dataset))
+test_size = len(dataset) - train_size
+train, test = random_split(dataset, [train_size, test_size])
+print(len(train), " ", len(test))
+
 trainloader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-test = FreiHandSet(test_root_dir, split="evaluation", version=sample_version.gs)
+# test = FreiHandSet(test_root_dir, split="evaluation", version=sample_version.gs)
 testloader = DataLoader(test, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
 # 创建模型
@@ -57,9 +66,7 @@ total_test_step = 0
 epoch = 400
 train_epoch = 0
 
-# test pck 测试
-total_test_auc = 0
-evaluator = EvalUtil()
+
 
 
 # 写入tensorboard
@@ -80,12 +87,18 @@ def get_model_list(checkpoint_dir):
 
 
 checkpoint_dir = "../checkpoint"
-model_name = get_model_list(checkpoint_dir)  # 获取最新的.pth参数文件路径
-if model_name is None:
+if arg.resume == "none":
+    # 不使用已经训练的模型继续训练
     train_epoch = 0
-else:
+elif arg.resume == "latest":
+    model_name = get_model_list(checkpoint_dir)  # 获取最新的.pth参数文件路径
     model.load_state_dict(torch.load(model_name))  # 载入模型参数
     train_epoch = int(model_name.split("_")[1].split(".")[0])  # 获取已经训练的模型的轮次
+else:
+    model_name = os.path.join(checkpoint_dir, arg.resume)
+    model.load_state_dict(torch.load(model_name))  # 载入模型参数
+    train_epoch = int(model_name.split("_")[1].split(".")[0])  # 获取已经训练的模型的轮次
+
 
 while True:
     print("----------------------第 {} 轮训练开始--------------------".format(train_epoch + 1))
@@ -93,6 +106,9 @@ while True:
 
     # 训练集上训练
     model.train()
+    # test pck 测试
+    total_train_auc = 0
+
     for data in trainloader:
         imgs, gt_joints, gt_keypoints = data
         # 真实标注中   3djoint 扩大1000倍数  并改为相对于中指MCP的位置
@@ -122,31 +138,37 @@ while True:
         total_loss = 100 * loss_2d + 100 * loss_3d + 1000 * loss_reg
 
         # 计算3D PCK 和 AUC  要求joint的gt和pred在同一个数量级上   验证功能使用
-        # for i in range(joint.shape[0]):
-        #     gt_joint_item = gt_joints[i]
-        #     pred_joint_item = joint[i]
-        #     evaluator.feed(gt_joint_item, pred_joint_item)
-        #     result = evaluator.get_measures(0, 50, 20)
-        #     _1, _2, _3, auc_3d, pck_curve_3d, _ = result
-        #     total_test_auc = total_test_auc + auc_3d
+        evaluator = EvalUtil()
+        for i in range(joint.shape[0]):
+            gt_joint_item = gt_joints[i]
+            pred_joint_item = joint[i]
+            evaluator.feed(gt_joint_item, pred_joint_item)
+            result = evaluator.get_measures(0, 50, 20)
+            _1, _2, _3, auc_3d, pck_curve_3d, _ = result
+            total_train_auc = total_train_auc + auc_3d
 
         # 优化器优化模型
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-        schedule.step()
 
         total_train_step = total_train_step + 1
-        if total_train_step % 2 == 0:
+        if total_train_step % 1000 == 0:
             print("训练次数：{}, Loss:{}".format(total_train_step, total_loss))
             # log.write("训练次数：{}, Loss:{}\n".format(total_train_step, total_loss))
             # writer.add_scalar("train", total_loss, total_train_step)
+
+    # 训练集上auc指标
+    print("整体训练集上AUC:{}".format(total_train_auc / len(train)))
+    # log.write("整体训练集上AUC:{}\n".format(total_train_auc / len(train)))
+
+    # 在每个epoch后调整学习率
+    schedule.step()
 
     # 测试集上测试  不需要计算梯度
     model.eval()
     total_test_loss = 0
     total_test_auc = 0
-
 
     with torch.no_grad():
         for data in testloader:
